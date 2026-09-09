@@ -1,0 +1,11 @@
+{
+  "name": "@veyro/build-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Isolated Android build worker for VEYRO",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node test.js"
+  }
+}
