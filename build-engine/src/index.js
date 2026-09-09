@@ -4,6 +4,7 @@ import { createServer } from "node:http";
 const port = Number(process.env.PORT || 8080);
 const jobs = new Map();
 const MAX_BODY_BYTES = 1024 * 1024;
+const WORKER_TOKEN = process.env.WORKER_TOKEN || "";
 
 function send(res, status, payload) {
   res.writeHead(status, { "content-type": "application/json" });
@@ -83,6 +84,41 @@ const server = createServer(async (req, res) => {
       return send(res, error.message === "request_too_large" ? 413 : 400, {
         error: error.message || "invalid_request"
       });
+    }
+  }
+
+  if (req.method === "POST" && url.pathname === "/build/claim") {
+    if (WORKER_TOKEN && req.headers.authorization !== `Bearer ${WORKER_TOKEN}`) {
+      return send(res, 401, { error: "unauthorized" });
+    }
+    const job = [...jobs.values()]
+      .filter(j => j.status === "queued")
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0];
+    if (!job) return send(res, 204, {});
+    job.status = "running";
+    job.startedAt = new Date().toISOString();
+    return send(res, 200, { job });
+  }
+
+  if (req.method === "POST" && url.pathname.startsWith("/build/") && url.pathname.endsWith("/result")) {
+    if (WORKER_TOKEN && req.headers.authorization !== `Bearer ${WORKER_TOKEN}`) {
+      return send(res, 401, { error: "unauthorized" });
+    }
+    const id = url.pathname.slice("/build/".length, -"/result".length);
+    const job = jobs.get(id);
+    if (!job) return send(res, 404, { error: "job_not_found" });
+    try {
+      const result = await readJson(req);
+      if (!["success", "failed"].includes(result.status)) {
+        return send(res, 400, { error: "status must be success or failed" });
+      }
+      job.status = result.status;
+      job.finishedAt = new Date().toISOString();
+      job.artifact = result.artifact ?? null;
+      job.error = result.error ?? null;
+      return send(res, 200, { job });
+    } catch (error) {
+      return send(res, 400, { error: error.message || "invalid_request" });
     }
   }
 
