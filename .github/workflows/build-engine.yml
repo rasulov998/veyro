@@ -1,0 +1,25 @@
+name: VEYRO Build Engine
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "build-engine/**"
+      - ".github/workflows/build-engine.yml"
+  pull_request:
+    paths:
+      - "build-engine/**"
+      - ".github/workflows/build-engine.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: build-engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
