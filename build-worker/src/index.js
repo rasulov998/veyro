@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { spawn } from "node:child_process";
+import { materializeProject } from "./materializer.js";
 
 const engineUrl = process.env.BUILD_ENGINE_URL || "http://127.0.0.1:8080";
 const workspaceRoot = resolve(process.env.WORKSPACE_ROOT || "/tmp/veyro-workspaces");
@@ -57,8 +58,16 @@ export async function processJob(job) {
   const workspace = join(workspaceRoot, job.projectId);
   mkdirSync(workspace, { recursive: true });
 
-  // The trusted project service must materialize the project into this workspace
-  // before a job is claimed. The worker never executes arbitrary remote URLs.
+  // Materialize only structured project files supplied by the trusted project service.
+  if (job.project) {
+    try {
+      await materializeProject(job.project, workspace);
+    } catch (error) {
+      await report(job.id, { status: "failed", error: error.message || "materialization_failed" });
+      return;
+    }
+  }
+
   if (!existsSync(join(workspace, "gradlew"))) {
     await report(job.id, {
       status: "failed",
