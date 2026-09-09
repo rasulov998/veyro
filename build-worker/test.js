@@ -1,3 +1,5 @@
+process.env.NODE_ENV = "test";
+
 import assert from "node:assert/strict";
 import { processJob } from "./src/index.js";
 
