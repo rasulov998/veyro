@@ -71,6 +71,7 @@ const server = createServer(async (req, res) => {
         projectId: input.projectId,
         output: input.output ?? "apk",
         source: input.source ?? null,
+        project: input.project ?? null,
         status: "queued",
         createdAt: new Date().toISOString()
       };
